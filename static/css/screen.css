@@ -1,0 +1,56 @@
+@charset "UTF-8";
+/**
+* ConCoct Stylesheet
+*
+* Common styles for screens.
+*
+* @copyright       Copyright 2015, Christian Wichmann
+* @license         CC-A 3.0 (http://creativecommons.org/licenses/by-nc/3.0/de/),
+* @version         0.1
+*/
+
+html {
+	/*height: 100%;
+	width: 100%;	*/
+}
+
+body {
+	/*width:750px;
+	margin:auto;
+	font-family: Georgia, Baskerville, "Times New Roman", Times, Garamond, serif;*/
+	font-family: Helvetica, Arial, sans-serif;
+	font-size: 11pt; /* equals 100%*/
+  /*background-color:#D8D8D8;
+	color: black;*/
+}
+
+.content-container {
+
+}
+
+/*************** styles for code editor ***************/
+#editor {
+  position: relative;
+  height: 600px;
+  width: 80%;
+  font-size: 14pt;
+}
+
+.warning {
+  position: absolute;
+  background: yellow;
+  z-index: 20;
+}
+
+/*************** styles for tasks function ***************/
+#task-description {
+  margin: auto;
+  width: 80%;
+  padding: 10px;
+  border: 1px solid grey;
+}
+
+#back_button {
+
+  text-align: center;
+}
