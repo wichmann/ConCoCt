@@ -42,5 +42,7 @@ programs, so give the developers lots of thanks sometime!
   contained, serverless, zero-configuration, transactional SQL database engine.
   SQLite is in the public domain. No claim of ownership is made to any part of
   the code.
+* Ace - The High Performance Code Editor for the Web. http://ace.c9.io/.
+  Released under the BSD license.
 * Some cliparts from opencliparts.org:
    - https://openclipart.org/detail/212046/emblem-gear

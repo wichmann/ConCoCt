@@ -2,11 +2,13 @@
 
 import os
 import shutil
+from gluon.tools import prettydate
 # TODO Fix import problematic because base dir of web2py is different from
 #      working directory of Celery worker!
 import celery_tasks
 
 
+@auth.requires_login()
 def list():
     """
     Allows to upload, view and edit entries for given task.
@@ -24,13 +26,27 @@ def list():
     /entry/view/[task id] -> view result of compilation and run of entry
                              button to forward to code editor opened with current entry for given task
     """
-    query = ((db.Entries.Submitter == auth.user))
-    grid = SQLFORM.grid(query=query,
-                        create=True, deletable=True, editable=False, csv=False,
-                        maxtextlength=64, paginate=25)
+    entries_for_all_tasks = db(db.Entries.Submitter == auth.user_id).select(orderby=db.Entries.Task|db.Entries.SubmissionTime)
+    current_task = ''
+    current_task_div_list = []
+    task_div_list = []
+    for entry in entries_for_all_tasks:
+        if current_task != entry.Task:
+            task_div_list.append(DIV(current_task_div_list))
+            current_task_div_list = []
+            current_task = entry.Task
+            current_task_div_list.append(DIV('Task number {}'.format(current_task), _class='task_caption'))
+        entry_with_link = A('Entry no. {} uploaded {}'.format(entry.id, prettydate(entry.SubmissionTime,T)),
+                            _href=URL(c='default', f='codeeditor', args=(entry.Task, entry.id)))
+        current_task_div_list.append(DIV(entry_with_link, _class='entry_data'))
+        # TODO Add link to code editor with the entry file open!
+    # add last tasks entries
+    task_div_list.append(DIV(current_task_div_list))
+    complete_entry_list = DIV(task_div_list)
     return locals()
 
 
+@auth.requires_login()
 def upload():
     if request.args:
         form = SQLFORM(db.Entries)
@@ -40,6 +56,7 @@ def upload():
     return locals()
 
 
+@auth.requires_login()
 def add():
     """
     Displays a form to upload a new entry for a given task.
@@ -67,14 +84,14 @@ def add():
         if form.process().accepted:
             response.flash = T('Entry successfully uploaded!')
             # copy uploaded file to solutions directory to be build later
-            user_id = 42
             solutions_path = os.path.join(request.folder, 'private', 'solutions',
-                                          str(task_to_upload_entry_to), str(user_id))
+                                          str(task_to_upload_entry_to), str(auth.user_id))
             if not os.path.exists(solutions_path):
                 os.makedirs(solutions_path)
-            # TODO Allow multiple solutions for task by renaming to solution.1.c
-            #      instead of solution.c and store info in database.
-            new_solution_file = os.path.join(solutions_path, 'solution.c')
+            # get number of already uploaded entries to name file of new submission
+            number_of_already_made_entries = db((db.Entries.Submitter == auth.user_id) &
+                                                (db.Entries.Task == task_to_upload_entry_to)).count()
+            new_solution_file = os.path.join(solutions_path, 'solution.{}.c'.format(number_of_already_made_entries + 1))
             uploaded_file_on_disk = os.path.join(request.folder, 'uploads', form.vars.SubmittedFile)
             shutil.copyfile(uploaded_file_on_disk, new_solution_file)
             # update database entry
@@ -82,7 +99,7 @@ def add():
             new_entry.update_record(IPAddress=request.client)
             new_entry.update_record(Task=task_to_upload_entry_to)
             new_entry.update_record(OnDiskPath=new_solution_file)
-            #new_entry.update_record(Submitter=auth.user_id)
+            new_entry.update_record(Submitter=auth.user_id)
             # redirect to build page
             redirect(URL(f='build',args=(task_to_upload_entry_to, form.vars.id)))
         return locals()
@@ -90,6 +107,7 @@ def add():
         raise HTTP(404, T('No task number given.'))
 
 
+@auth.requires_login()
 def build():
     """
     Returns results of build and test execution as JSON or HTML.
@@ -116,16 +134,23 @@ def build():
                             $.get("{reload_url}", function(data) {{
                                 $("#build_status").text(data.status);
                                 $("#build_results").text(data.test_results);
+                                if (data.test_results != ""){{
+                                    $("#forward_button").show();
+                                }}
                                 // TODO Stop timer.
                             }});
                         }};
-                        setInterval("reload()", 1000);
+                        $("#forward_button").hide();
+                        setInterval("reload()", 500);
                         """.format(reload_url=URL(r=request, c='entry', f='build_status.json', args=(build_id,))))
+        forward_button = A(T('Results'), _href=URL(c='default', f='codeeditor', args=(task_to_be_build, entry_to_be_build)),
+                           _class='btn btn-primary', _id='forward_button')
         return locals()
     else:
         raise HTTP(404, T('No task number given.'))
 
 
+@auth.requires_login()
 def build_status():
     """
     Returns information about an ongoing or finished build. The information
@@ -161,7 +186,7 @@ def build_status():
                 if not already_finished:
                     chosen_build.update_record(Finished=True)
                     chosen_build.update_record(Report=test_results)
-                    db.commit()
+                    #db.commit()
             except AttributeError:
                 test_results = ''
         return dict(status=status, test_results=test_results)
@@ -169,6 +194,7 @@ def build_status():
         raise HTTP(404, T('No build number given.'))
 
 
+@auth.requires_login()
 def view():
     if request.args:
         #fields = (db.task.Name, db.task.DueDate, db.task.Token)

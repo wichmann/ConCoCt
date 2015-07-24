@@ -50,6 +50,14 @@ body {
   border: 1px solid grey;
 }
 
+.task_caption {
+  color: red;
+}
+
+.entry_data {
+	color: blue;
+}
+
 #back_button {
 
   text-align: center;

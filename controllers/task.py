@@ -2,7 +2,10 @@
 
 import os
 from zipfile import ZipFile
+from gluon.contrib.markdown import markdown2
 
+
+@auth.requires_login()
 def view():
     """
     Shows all tasks if no argument is given or details of a specific task.
@@ -12,17 +15,20 @@ def view():
     /task/add -> add a new task by uploading a ZIP file with all information
     """
     if request.args:
-        from gluon.contrib.markdown import markdown2
-        length = len(request.args[0])
-        # TODO Make argument tasks id instead of its name.
-        # TODO Check whether the given task number is valid!
-        # take task name from raw arguments because there could be umlauts
-        task_to_be_shown = request.raw_args[0:length]
-        task_description_path = os.path.join(request.folder, 'private', 'tasks', task_to_be_shown, 'description.md')
+        # check if argument is valid integer number
+        try:
+            task_to_be_shown = int(request.args[0])
+        except ValueError:
+            raise HTTP(404, T('Invalid argument given.'))
+        # check whether argument is a valid task id
+        row = db(db.Tasks.id == task_to_be_shown)
+        if not row:
+            raise HTTP(404, T('Invalid task id given.'))
+        task_data_path = row.select().first()['DataPath']
+        task_description_path = os.path.join(task_data_path, 'description.md')
         with open(task_description_path, 'r') as task_description:
             description = XML(markdown2.markdown(task_description.read()))
         back_button = A(T('Back'), _href=URL(f='list'), _class='btn btn-primary', _id='back_button')
-        #<div id="back_button" class="btn btn-primary"><a href="{{=URL(f='tasks')}}">{{=T('Back')}}</a></div>
         submit_entry_button = A(T('Submit entry'), _href=URL(c='entry',f='add', args=(task_to_be_shown)), _class='btn btn-primary', _id='submit_entry_button')
         return dict(description=description, back_button=back_button,
                     submit_entry_button=submit_entry_button)
@@ -30,19 +36,34 @@ def view():
         raise HTTP(404, T('No task number given.'))
 
 
+@auth.requires_login()
 def list():
-    tasks_path = os.path.join(request.folder, 'private', 'tasks')
-    # get all subdirectories of tasks directory
-    #tasks_directories = [x[1] for x in os.walk(tasks_path)]
-    #tasks_directories = filter(os.path.isdir, [os.path.join(tasks_path,f) for f in os.listdir(tasks_path)])
-    tasks_directories = [d for d in os.listdir(tasks_path) if os.path.isdir(os.path.join(tasks_path, d))]
     task_links_list = []
-    for task in tasks_directories:
-        task_links_list.append(LI(A(task, _href=URL(c='task', f='view', args=(task,)))))
-    task_table = UL(task_links_list, _id='task_table')
-    return dict(task_table=task_table)
+    script_parts_list = ''
+    for task in db(db.Tasks.id > 0).select():
+        current_description_id = 'description-{}'.format(task.id)
+        current_title_id = 'tasktitle-{}'.format(task.id)
+        task_link = DIV('Task: ', A(task.Name, _href=URL(c='task', f='view', args=(task.id,))), _id=current_title_id)
+        task_description_path = os.path.join(task.DataPath, 'description.md')
+        with open(task_description_path, 'r') as task_description:
+            task_description = DIV(XML(markdown2.markdown(task_description.read())), _id=current_description_id)
+        task_links_list.append(DIV(task_link, task_description))
+        # deactivate task descriptions by default and toggle them by clicking
+        script_parts_list += '$("#{descID}").hide();'.format(descID=current_description_id)
+        script_parts_list += '$("#{titleID}").click(function(){{ $("#{descID}").slideToggle(); }});'.format(titleID=current_title_id, descID=current_description_id)
+    task_table = DIV(task_links_list, _id='task_table')
+    script = SCRIPT("""
+                function onclickTask(id) {{
+                    alert(id);
+                    //$("#upload_Task").empty();
+                    //ajax('', ['Teacher'], ':eval');
+                }};
+                {moreScript}
+                """.format(moreScript=script_parts_list))
+    return dict(task_table=task_table, script=script)
 
 
+@auth.requires_membership('teacher')
 def add():
     """
     Adds a new task to the system. The task consists of a single ZIP file

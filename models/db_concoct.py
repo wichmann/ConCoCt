@@ -1,10 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from gluon.contrib.populate import populate
-if db(db.auth_user).isempty():
-     populate(db.auth_user,10)
-
-
 # get current date to be used when an upload is stored
 import datetime
 now=datetime.datetime.now()
