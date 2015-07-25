@@ -1,11 +1,27 @@
 {{extend 'layout.html'}}
 
-<h1>{{=T('Build entry for task')}}</h1>
+<h1>{{=T('Task: {task_name}').format(task_name=task_name)}}</h1>
 
-<div class="content-container">
-  <div id="task-description">
-    {{=description}}
+<div class="panel-group">
+    <div class="panel panel-info">
+      <div class="panel-heading">{{=T('Description')}}</div>
+      <div class="panel-body">
+        <div id="task-description">
+          {{=description}}
+        </div>
+      </div>
+    </div>
+
+    <div class="panel panel-warning">
+      <div class="panel-heading">Submitted entries</div>
+      <div class="panel-body"></div>
+    </div>
+
+    <div class="panel panel-danger">
+      <div class="panel-heading">Errors</div>
+      <div class="panel-body"></div>
+    </div>
   </div>
-  {{=back_button}}
-  {{=submit_entry_button}}
-</div>
+
+{{=back_button}}
+{{=submit_entry_button}}

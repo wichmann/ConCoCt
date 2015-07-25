@@ -10,6 +10,9 @@ def view():
     """
     Shows all tasks if no argument is given or details of a specific task.
 
+    TODO: Use bootstrap panel for displaying task description and other
+          information.
+
     /task/list -> lists all tasks (includes a button to download task template as ZIP file)
     /task/view/[task id] -> view detailed information about a specific task
     /task/add -> add a new task by uploading a ZIP file with all information
@@ -31,7 +34,8 @@ def view():
         back_button = A(T('Back'), _href=URL(f='list'), _class='btn btn-primary', _id='back_button')
         submit_entry_button = A(T('Submit entry'), _href=URL(c='entry',f='add', args=(task_to_be_shown)), _class='btn btn-primary', _id='submit_entry_button')
         return dict(description=description, back_button=back_button,
-                    submit_entry_button=submit_entry_button)
+                    submit_entry_button=submit_entry_button,
+                    task_name=row.select().first()['Name'])
     else:
         raise HTTP(404, T('No task number given.'))
 
@@ -41,13 +45,20 @@ def list():
     task_links_list = []
     script_parts_list = ''
     for task in db(db.Tasks.id > 0).select():
+        # build panel header for each task including the button group displayed
+        # on the right side
         current_description_id = 'description-{}'.format(task.id)
         current_title_id = 'tasktitle-{}'.format(task.id)
-        task_link = DIV('Task: ', A(task.Name, _href=URL(c='task', f='view', args=(task.id,))), _id=current_title_id)
+        current_title_text = H3('Task: {}'.format(task.Name), _class='panel-title pull-left')
+        view_current_task_button = A(T('View task'), _href=URL(c='task', f='view', args=(task.id,)),
+                                     _class='btn btn-primary', _id='view_button-{}'.format(task.id))
+        button_group = DIV(view_current_task_button, _class='btn-group pull-right')
+        task_link = DIV(DIV(current_title_text), DIV(button_group), _id=current_title_id, _class='panel-heading clearfix')
         task_description_path = os.path.join(task.DataPath, 'description.md')
+        # build panel body containing task description
         with open(task_description_path, 'r') as task_description:
-            task_description = DIV(XML(markdown2.markdown(task_description.read())), _id=current_description_id)
-        task_links_list.append(DIV(task_link, task_description))
+            task_description = DIV(XML(markdown2.markdown(task_description.read())), _id=current_description_id, _class='panel-body')
+        task_links_list.append(DIV(task_link, task_description, _class='panel panel-default'))
         # deactivate task descriptions by default and toggle them by clicking
         script_parts_list += '$("#{descID}").hide();'.format(descID=current_description_id)
         script_parts_list += '$("#{titleID}").click(function(){{ $("#{descID}").slideToggle(); }});'.format(titleID=current_title_id, descID=current_description_id)

@@ -100,7 +100,7 @@ def codeeditor():
     js1 = SCRIPT(_src=URL('static', 'js/src-noconflict/ace.js'), _type='text/javascript', _charset='utf-8')
     # TODO Fix problem with unicode characters in error descriptions!
     js2 = SCRIPT(u''.join([editor_code, marker_js_code]).encode('ascii', 'ignore'), _type='text/javascript', _charset='utf-8')
-    submit_button = INPUT(_type='button', _value='Save changes...', _id='submit_button')
+    submit_button = INPUT(_type='button', _value=T('Save changes...'), _id='submit_button')
     return locals()
 
 

@@ -18,14 +18,13 @@ body {
 	/*width:750px;
 	margin:auto;
 	font-family: Georgia, Baskerville, "Times New Roman", Times, Garamond, serif;*/
-	font-family: Helvetica, Arial, sans-serif;
-	font-size: 11pt; /* equals 100%*/
+	/*font-family: Helvetica, Arial, sans-serif;
+	font-size: 11pt;  /* equals 100%*/
   /*background-color:#D8D8D8;
 	color: black;*/
 }
 
 .content-container {
-
 }
 
 /*************** styles for code editor ***************/
@@ -44,10 +43,6 @@ body {
 
 /*************** styles for tasks function ***************/
 #task-description {
-  margin: auto;
-  width: 80%;
-  padding: 10px;
-  border: 1px solid grey;
 }
 
 .task_caption {
@@ -59,6 +54,23 @@ body {
 }
 
 #back_button {
-
   text-align: center;
 }
+
+.panel h1{
+	font-size: 120%;
+}
+
+.panel h2{
+	font-size: 120%;
+}
+
+/*
+.panel h3{
+	font-size: 120%;
+}
+
+.panel h4{
+	font-size: 120%;
+}
+*/

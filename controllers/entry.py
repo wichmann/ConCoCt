@@ -32,16 +32,19 @@ def list():
     task_div_list = []
     for entry in entries_for_all_tasks:
         if current_task != entry.Task:
-            task_div_list.append(DIV(current_task_div_list))
-            current_task_div_list = []
+            # add elements to page if there are entries in current task
+            if current_task_div_list:
+                task_div_list.append(DIV(current_task_div_list, _class='panel panel-default'))
+                current_task_div_list = []
             current_task = entry.Task
-            current_task_div_list.append(DIV('Task number {}'.format(current_task), _class='task_caption'))
+            new_task_panel_header = H3('Task number {}'.format(current_task), _id='task_title-{}'.format(entry.Task), _class='panel-title')
+            current_task_div_list.append(DIV(new_task_panel_header, _id='task_caption-{}'.format(entry.Task), _class='panel-heading'))
         entry_with_link = A('Entry no. {} uploaded {}'.format(entry.id, prettydate(entry.SubmissionTime,T)),
                             _href=URL(c='default', f='codeeditor', args=(entry.Task, entry.id)))
-        current_task_div_list.append(DIV(entry_with_link, _class='entry_data'))
+        current_task_div_list.append(DIV(entry_with_link, _id='entry_data-{}'.format(entry.id), _class='panel-body'))
         # TODO Add link to code editor with the entry file open!
     # add last tasks entries
-    task_div_list.append(DIV(current_task_div_list))
+    task_div_list.append(DIV(current_task_div_list, _class='panel panel-default'))
     complete_entry_list = DIV(task_div_list)
     return locals()
 

@@ -3,7 +3,8 @@ ConCoct
 
 Description
 -----------
-ConCoct is ...
+ConCoct is a web application to automatically compile and test simple programs
+written in the C programming language.
 
 
 Deployment
