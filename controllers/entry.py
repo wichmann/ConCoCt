@@ -26,26 +26,37 @@ def list():
     /entry/view/[task id] -> view result of compilation and run of entry
                              button to forward to code editor opened with current entry for given task
     """
-    entries_for_all_tasks = db(db.Entries.Submitter == auth.user_id).select(orderby=db.Entries.Task|db.Entries.SubmissionTime)
-    current_task = ''
-    current_task_div_list = []
+    tasks_in_entries = db(db.Entries.Submitter == auth.user_id).select(orderby=db.Entries.Task, groupby=db.Entries.Task)
     task_div_list = []
-    for entry in entries_for_all_tasks:
-        if current_task != entry.Task:
-            # add elements to page if there are entries in current task
-            if current_task_div_list:
-                task_div_list.append(DIV(current_task_div_list, _class='panel panel-default'))
-                current_task_div_list = []
-            current_task = entry.Task
-            new_task_panel_header = H3('Task number {}'.format(current_task), _id='task_title-{}'.format(entry.Task), _class='panel-title')
-            current_task_div_list.append(DIV(new_task_panel_header, _id='task_caption-{}'.format(entry.Task), _class='panel-heading'))
-        entry_with_link = A('Entry no. {} uploaded {}'.format(entry.id, prettydate(entry.SubmissionTime,T)),
-                            _href=URL(c='default', f='codeeditor', args=(entry.Task, entry.id)))
-        current_task_div_list.append(DIV(entry_with_link, _id='entry_data-{}'.format(entry.id), _class='panel-body'))
-        # TODO Add link to code editor with the entry file open!
-    # add last tasks entries
-    task_div_list.append(DIV(current_task_div_list, _class='panel panel-default'))
+    js_toggle_panels = ''
+    for task in tasks_in_entries:
+        # get current task from database based on id from Entries table
+        current_task = db(db.Tasks.id == task.Task).select().first()
+        # get all entries for current task sorted by submission time
+        entries = db((db.Entries.Submitter == auth.user_id) & (db.Entries.Task == current_task.id)).select(orderby=~db.Entries.SubmissionTime)
+        entry_rows = []
+        entry_rows.append(TR(TD('Entry'), TD('Uploaded'), TD('Edit'), TD('Build'), _class='table_header'))
+        for entry in entries:
+            # build table row of current entry for current task
+            entry_text = 'Entry no. {}'.format(entry.id)
+            edit_entry_link = A('Edit entry', _href=URL(c='default', f='codeeditor', args=(entry.Task, entry.id)))
+            build_entry_link = A('Build entry', _href=URL(f='build', args=(entry.Task, entry.id)))
+            entry_rows.append(TR(TD(entry_text), TD(prettydate(entry.SubmissionTime,T)), TD(edit_entry_link),
+                                 TD(build_entry_link), _id='entry_data-{}'.format(entry.id)))
+        # build panel and its header
+        task_panel_heading_id = 'task_heading-{}'.format(current_task.id)
+        task_panel_body_id = 'task_body-{}'.format(current_task.id)
+        entry_table = TABLE(*entry_rows, _class='table table-hover')
+        current_task_table = DIV(entry_table, _class='panel-body', _id=task_panel_body_id)
+        new_task_panel_header = H3('Task number {task_id}: {task_name}'.format(task_id=current_task.id, task_name=current_task.Name),
+                                   _class='panel-title')
+        current_task_header = DIV(new_task_panel_header, _class='panel-heading', _id=task_panel_heading_id)
+        task_div_list.append(DIV(current_task_header, current_task_table, _class='panel panel-default'))
+        # create JavaScript to toggle panels by clicking on their header
+        js_toggle_panels += '$("#{contentID}").hide();'.format(contentID=task_panel_body_id)
+        js_toggle_panels += '$("#{titleID}").click(function(){{ $("#{contentID}").slideToggle(); }});'.format(titleID=task_panel_heading_id, contentID=task_panel_body_id)
     complete_entry_list = DIV(task_div_list)
+    js_toggle_panels = SCRIPT(js_toggle_panels)
     return locals()
 
 
@@ -132,19 +143,22 @@ def build():
         status_box = DIV(_id='build_status')
         result_box = DIV(_id='build_results')
         script = SCRIPT("""
+                        var intervalID = setInterval(function(){{ reload() }}, 250);
+
                         function reload()
                         {{
                             $.get("{reload_url}", function(data) {{
                                 $("#build_status").text(data.status);
                                 $("#build_results").text(data.test_results);
                                 if (data.test_results != ""){{
+                                    // clear timer and show button when result is in
                                     $("#forward_button").show();
-                                }}
-                                // TODO Stop timer.
+                                    clearInterval(intervalID);
+                                }};
                             }});
                         }};
+
                         $("#forward_button").hide();
-                        setInterval("reload()", 500);
                         """.format(reload_url=URL(r=request, c='entry', f='build_status.json', args=(build_id,))))
         forward_button = A(T('Results'), _href=URL(c='default', f='codeeditor', args=(task_to_be_build, entry_to_be_build)),
                            _class='btn btn-primary', _id='forward_button')
