@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import os
-import shutil
 import datetime
+import StringIO
 
 from gluon.tools import prettydate
 
@@ -141,35 +141,54 @@ def add():
         row = db(db.Tasks.id == task_to_upload_entry_to)
         if not row:
             raise HTTP(404, T('No task number given.'))
-        # build upload form
-        fields = (db.Entries.SubmittedFile, )
-        query = (db.Entries.id > 0)
-        form = SQLFORM(db.Entries)
-        # validate and process the form
-        if form.process().accepted:
-            response.flash = T('Entry successfully uploaded!')
-            # copy uploaded file to solutions directory to be build later
-            solutions_path = os.path.join(request.folder, 'private', 'solutions',
-                                          str(task_to_upload_entry_to), str(auth.user_id))
-            if not os.path.exists(solutions_path):
-                os.makedirs(solutions_path)
-            # get number of already uploaded entries to name file of new submission
-            number_of_already_made_entries = db((db.Entries.Submitter == auth.user_id) &
-                                                (db.Entries.Task == task_to_upload_entry_to)).count()
-            new_solution_file = os.path.join(solutions_path, 'solution.{}.c'.format(number_of_already_made_entries + 1))
-            uploaded_file_on_disk = os.path.join(request.folder, 'uploads', form.vars.SubmittedFile)
-            shutil.copyfile(uploaded_file_on_disk, new_solution_file)
-            # update database entry
-            new_entry = db(db.Entries.id == form.vars.id).select().first()
-            new_entry.update_record(IPAddress=request.client)
-            new_entry.update_record(Task=task_to_upload_entry_to)
-            new_entry.update_record(OnDiskPath=new_solution_file)
-            new_entry.update_record(Submitter=auth.user_id)
-            # redirect to build page
-            redirect(URL(f='build',args=(task_to_upload_entry_to, form.vars.id)))
-        return locals()
+        # check if file content was sent by JavaScript from code editor page
+        if request.env.request_method == 'POST' and 'requestFromCodeEditor' in request.post_vars:
+            if 'filecontent' in request.post_vars:
+                uploaded_data_as_file = StringIO.StringIO(request.post_vars['filecontent'])
+                new_solution_file = store_new_entry_on_disk(task_to_upload_entry_to, uploaded_data_as_file)
+                with open(new_solution_file, 'rb') as uploaded_file:
+                    # TODO Use db.Entries.validate_and_insert() and fix problem with file extension validator.
+                    new_id = db.Entries.insert(Submitter=auth.user_id, Task=task_to_upload_entry_to,
+                                               IPAddress=request.client, OnDiskPath=new_solution_file)
+                return dict(new_id=new_id)
+            else:
+                raise HTTP(404, T('No POST data in POST request.'))
+        else:
+            # build upload form if GET request was sent
+            fields = (db.Entries.SubmittedFile, )
+            query = (db.Entries.id > 0)
+            form = SQLFORM(db.Entries)
+            # validate and process the form
+            if form.process().accepted:
+                response.flash = T('Entry successfully uploaded!')
+                uploaded_file_on_disk = os.path.join(request.folder, 'uploads', form.vars.SubmittedFile)
+                new_solution_file = store_new_entry_on_disk(task_to_upload_entry_to, open(uploaded_file_on_disk, 'rb'))
+                # update database entry
+                new_entry = db(db.Entries.id == form.vars.id).select().first()
+                new_entry.update_record(IPAddress=request.client)
+                new_entry.update_record(Task=task_to_upload_entry_to)
+                new_entry.update_record(OnDiskPath=new_solution_file)
+                new_entry.update_record(Submitter=auth.user_id)
+                # redirect to build page
+                redirect(URL(f='build',args=(task_to_upload_entry_to, form.vars.id)))
+            return locals()
     else:
         raise HTTP(404, T('No task number given.'))
+
+
+def store_new_entry_on_disk(task_to_upload_entry_to, uploaded_file):
+    # copy uploaded file to solutions directory to be build later
+    solutions_path = os.path.join(request.folder, 'private', 'solutions',
+                                  str(task_to_upload_entry_to), str(auth.user_id))
+    if not os.path.exists(solutions_path):
+        os.makedirs(solutions_path)
+    # get number of already uploaded entries to name file of new submission
+    number_of_already_made_entries = db((db.Entries.Submitter == auth.user_id) &
+                                        (db.Entries.Task == task_to_upload_entry_to)).count()
+    new_solution_file = os.path.join(solutions_path, 'solution.{}.c'.format(number_of_already_made_entries + 1))
+    with open(new_solution_file, 'wb') as output_file:
+        output_file.write(uploaded_file.read())
+    return new_solution_file
 
 
 @auth.requires_login()
@@ -224,7 +243,7 @@ def build():
                         """.format(reload_url=URL(r=request, c='entry', f='build_status.json', args=(build_id,))))
         forward_button = A(T('Results'), _href=URL(c='default', f='codeeditor', args=(task_to_be_build, entry_to_be_build)),
                            _class='btn btn-primary', _id='forward_button')
-        return locals()
+        return dict(status_box=status_box, result_box=result_box, forward_button=forward_button, script=script, build_id=build_id)
     else:
         raise HTTP(404, T('No task number given.'))
 

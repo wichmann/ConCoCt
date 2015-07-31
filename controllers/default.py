@@ -50,10 +50,9 @@ def codeeditor():
         # get report for build of this entry
         row = db(db.Builds.Task == task_for_which_to_open_entry and
                  db.Builds.Entry == entry_to_be_opened).select()
-        if not row:
-            pass
-        if row.first()['Finished']:
-            report_for_entry = row.first()['Report']
+        if row:
+            if row.first()['Finished']:
+                report_for_entry = row.first()['Report']
     else:
         # get file path from default file of task
         row = db(db.Tasks.id == task_for_which_to_open_entry).select()
@@ -65,9 +64,54 @@ def codeeditor():
     with open(code_file_path, 'r') as code_file:
         code = code_file.read()
     # prepare java script code for displaying the Ace editor (http://ace.c9.io/)
+    js_on_submit_click = u"""
+                         function on_submit()
+                         {{
+                             // send edited program to server as new entry
+                             var editor = ace.edit("editor");
+                             $.ajax({{
+                                type: "POST",
+                                url: "{upload_url}",
+                                dataType: "application/json",
+                                data: {{"filecontent": editor.getValue(),
+                                        "requestFromCodeEditor": 1}},
+                                complete: function(data) {{
+                                    obj = JSON.parse(data.responseText);
+                                    var entry_id = obj.new_id;
+                                    build(entry_id)
+                                }}
+                             }});
+                         }};
+                         var intervalID = 0;
+                         function build(entry_id)
+                         {{
+                             var buildNumber = 0;
+                             // build newest entry for task
+                             $.get("{build_url}/" + entry_id, "", function(data) {{
+                                // call server to build newest entry
+                                buildNumber = data.build_id;
+                             }});
+                             // wait for build status and redirect to editor for new entry
+                             intervalID = setInterval(function() {{ reload(entry_id, buildNumber) }}, 2000);
+                         }};
+                         function reload(entry_id, buildNumber)
+                         {{
+                             $.get("{reload_url}/" + buildNumber, function(data) {{
+                                 if (data.test_results != ""){{
+                                     // clear timer and redirect
+                                     clearInterval(intervalID);
+                                     window.location.replace("{editor_url}/" + entry_id);
+                                 }};
+                             }});
+                         }};
+                         """.format(upload_url=URL(r=request, c='entry', f='add.json', args=(task_for_which_to_open_entry, )),
+                                    build_url=URL(r=request, c='entry', f='build.json', args=(task_for_which_to_open_entry, )),
+                                    reload_url=URL(r=request, c='entry', f='build_status.json'),
+                                    editor_url=URL(r=request, c='default', f='codeeditor', args=(task_for_which_to_open_entry, )))
     editor_code = u"""
+                  {on_submit}
                   // call function on click on submit button
-                  $("#submit_button").bind('click', function () { alert('File saved!'); });
+                  $("#submit_button").bind('click', function () {{ on_submit() }} );
                   // setup Ace editor
                   var editor = ace.edit("editor");
                   editor.setTheme("ace/theme/monokai");
@@ -75,7 +119,7 @@ def codeeditor():
                   editor.session.setOption("useWorker", false);
                   var Range = ace.require('ace/range').Range;
                   // add markers for warnings and errors
-                  """
+                  """.format(on_submit=js_on_submit_click)#'alert("File saved!");'
     editor = DIV(code, _id='editor')
     # prepare javascript code for warnings and errors
     marker_js_code = ''
@@ -92,11 +136,12 @@ def codeeditor():
         test_results = build_test_results(report_data)
     else:
         test_results = DIV(T('No unit tests results found!'))
+        # TODO Add button to build when not yet done!
     return locals()
 
 
 def build_test_results(report_data):
-    if report_data['cunit']['returncode']:
+    if 'cunit' not in report_data or report_data['cunit']['returncode']:
         return DIV(T('Unit tests could not be executed!'))
     if 'tests' not in report_data['cunit']:
         return DIV(T('No unit tests results found!'))

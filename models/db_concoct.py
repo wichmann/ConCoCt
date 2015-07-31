@@ -39,7 +39,7 @@ db.Entries.Submitter.default = auth.user_id
 db.Entries.SubmittedFile.requires = [IS_LENGTH(concoct_conf.take('handling.max_file_length', cast=int), 0,
                                                error_message=T('File size is to large!')),
                                      IS_NOT_EMPTY(error_message=T('Choose a file to be uploaded!')),
-                                     IS_UPLOAD_FILENAME(extension='c')]
+                                     IS_UPLOAD_FILENAME(extension='c', lastdot=True)]
 
 
 # create table to store information about builds
