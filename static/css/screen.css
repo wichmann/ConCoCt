@@ -30,7 +30,7 @@ body {
 /*************** styles for code editor ***************/
 #editor {
   position: relative;
-  height: 600px;
+  height: 550px;
   width: 100%;
   font-size: 14pt;
 }
