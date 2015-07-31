@@ -1,0 +1,11 @@
+{{extend 'layout.html'}}
+
+<div class="page-header">
+  <h1>{{=T('View entry for task {task_name}').format(task_name=task_name)}}</h1>
+</div>
+
+<div class="panel panel-info">
+  <div class="panel-body">
+      {{=grid}}
+  </div>
+</div>

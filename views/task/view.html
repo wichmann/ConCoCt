@@ -5,25 +5,22 @@
 </div>
 
 <div class="panel-group">
-    <div class="panel panel-info">
-      <div class="panel-heading">{{=T('Description')}}</div>
-      <div class="panel-body">
-        <div id="task-description">
-          {{=description}}
-        </div>
+  <div class="panel panel-info">
+    <div class="panel-heading">{{=T('Description')}}</div>
+    <div class="panel-body">
+      <div id="task-description">
+        {{=description}}
       </div>
     </div>
-
-    <div class="panel panel-warning">
-      <div class="panel-heading">Submitted entries</div>
-      <div class="panel-body"></div>
-    </div>
-
-    <div class="panel panel-danger">
-      <div class="panel-heading">Errors</div>
-      <div class="panel-body"></div>
+  </div>
+  <div class="panel panel-warning">
+    <div class="panel-heading">{{=T('Statistics')}}</div>
+    <div class="panel-body">
+      {{=statistics}}
     </div>
   </div>
+</div>
 
 {{=back_button}}
 {{=submit_entry_button}}
+{{=open_empty_file_button}}

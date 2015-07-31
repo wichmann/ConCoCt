@@ -194,7 +194,15 @@ def store_new_entry_on_disk(task_to_upload_entry_to, uploaded_file):
 @auth.requires_login()
 def build():
     """
-    Returns results of build and test execution as JSON or HTML.
+    Builds an entry for a given task. The two required parameter are the task id
+    and the entry id. This function creates a new build with an unique build id.
+
+    The database contains under that build id also an UUID used by Celery to
+    identify a task on worker instances.
+
+    If this function is called to return JSON content, the generated build id is
+    returned as "build_id" in the response. Otherwise this page is rendered as
+    HTML.
     """
     if request.args:
         if len(request.args) != 2:
@@ -295,15 +303,52 @@ def build_status():
 @auth.requires_login()
 def view():
     if request.args:
-        #fields = (db.task.Name, db.task.DueDate, db.task.Token)
-        query = ((db.Entries.Submitter == auth.user))
-        #headers = {'task.Name':   T('Name'),
-        #           'task.DueDate': T('DueDate'),
-        #           'task.Token': T('Token')}
-        #default_sort_order=[db.task.DueDate]
-        #links = [dict(header=T('View uploads'), body=lambda row: A(T('View uploaded files'), _href=URL('manage', 'collect', args=[row.id], user_signature=True)))]
-        grid = SQLFORM.grid(query=query, orderby=default_sort_order, create=True,
-                            links=links, deletable=True, editable=True, csv=False, maxtextlength=64, paginate=25,
-                            onvalidation=validate_task_data) #if auth.user else login
+        # validate task number against database
+        task_to_be_viewed = request.args[0]
+        task_from_db = db(db.Tasks.id == task_to_be_viewed).select().first()
+        if not task_from_db:
+            raise HTTP(404, T('Invalid task id.'))
+        # validate entry number against database
+        entry_to_be_viewed = request.args[1]
+        entry_from_db = db(db.Entries.id == entry_to_be_viewed).select().first()
+        if not entry_from_db:
+            raise HTTP(404, T('Invalid entry id.'))
+        if str(entry_from_db['Task']) != task_to_be_viewed:
+            raise HTTP(404, T('Invalid entry id for given task.'))
+        # get data for entry that should be shown
+        query = db((db.Entries.Submitter == auth.user) &
+                   (db.Entries.Task == task_to_be_viewed) &
+                   (db.Entries.id == entry_to_be_viewed)).select().first()
+        grid = ' '.join(['='.join([str(x), str(query[x])]) for x in query])
+        list_of_elements = []
+        div = DIV(LABEL(T('Entry id:'), _class="col-md-3 control-label"),
+                  DIV(LABEL(entry_to_be_viewed), _class="col-md-9"),
+                  _class="form-group")
+        list_of_elements.append(div)
+        div = DIV(LABEL(T('Task:'), _class="col-md-3 control-label"),
+                  DIV(LABEL(task_from_db['Name']), _class="col-md-9"),
+                  _class="form-group")
+        list_of_elements.append(div)
+        submitter = db(db.auth_user.id == query['Submitter']).select().first()
+        submitter_name = ' '.join((submitter['first_name'], submitter['last_name']))
+        div = DIV(LABEL(T('Submitter:'), _class="col-md-3 control-label"),
+                  DIV(LABEL(submitter_name), _class="col-md-9"),
+                  _class="form-group")
+        list_of_elements.append(div)
+        div = DIV(LABEL(T('IP Address:'), _class="col-md-3 control-label"),
+                  DIV(LABEL(query['IPAddress']), _class="col-md-9"),
+                  _class="form-group")
+        list_of_elements.append(div)
+        div = DIV(LABEL(T('Submission Time:'), _class="col-md-3 control-label"),
+                  DIV(LABEL(query['SubmissionTime']), _class="col-md-9"),
+                  _class="form-group")
+        list_of_elements.append(div)
+        number_of_builds = db(db.Builds.Entry == entry_to_be_viewed).count()
+        div = DIV(LABEL(T('Number of builds:'), _class="col-md-3 control-label"),
+                  DIV(LABEL(number_of_builds), _class="col-md-9"),
+                  _class="form-group")
+        list_of_elements.append(div)
+        grid = FORM(*list_of_elements, _class='form-horizontal')
+        return dict(grid=grid, task_name=task_from_db['Name'])
     else:
         raise HTTP(404, T('No task number given.'))

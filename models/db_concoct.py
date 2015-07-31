@@ -30,7 +30,6 @@ db.define_table(
     Field('IPAddress', 'string', writable=False, readable=False, label=T('IP Address')),
     Field('SubmittedFile', 'upload', label=T('File to be uploaded')),
     Field('OnDiskPath', 'string', writable=False, readable=False),
-    Field('CeleryUUID', 'string', writable=False, readable=False),
     Field('SubmissionTime', 'datetime', writable=False, readable=False, default=now),
     auth.signature,
 )

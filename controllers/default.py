@@ -3,6 +3,8 @@
 import os
 import json
 
+from gluon.contrib.markdown import markdown2
+
 
 ### required - do no delete
 def user(): return dict(form=auth())
@@ -17,7 +19,9 @@ def index():
 
 @auth.requires_login()
 def codeeditor():
-    """Shows a editor to change uploaded code files.
+    """
+    Shows a editor to view source files including their compiler errors and unit
+    test results and to change source files directly in the browser.
 
     If not entry id is given the default solution.c file for the given task is
     shown. Otherwise the entry file is opened.
@@ -55,11 +59,13 @@ def codeeditor():
                 report_for_entry = row.first()['Report']
     else:
         # get file path from default file of task
+        entry_to_be_opened = 0
         row = db(db.Tasks.id == task_for_which_to_open_entry).select()
         if not row:
             raise HTTP(404, T('Invalid task id given.'))
         task_data_path = row.first()['DataPath']
-        code_file_path = os.path.join(task_data_path, 'src', 'interface.c')
+        # TODO Get code file name from tasks config.json file.
+        code_file_path = os.path.join(task_data_path, 'src', 'solution.c')
     # open file and get content
     with open(code_file_path, 'r') as code_file:
         code = code_file.read()
@@ -130,13 +136,21 @@ def codeeditor():
     js1 = SCRIPT(_src=URL('static', 'js/src-noconflict/ace.js'), _type='text/javascript', _charset='utf-8')
     # TODO Fix problem with unicode characters in error descriptions!
     js2 = SCRIPT(u''.join([editor_code, marker_js_code]).encode('ascii', 'ignore'), _type='text/javascript', _charset='utf-8')
-    submit_button = INPUT(_type='button', _value=T('Save changes...'), _id='submit_button')
+    submit_button = SPAN(INPUT(_type='button', _value=T('Save changes...'), _class='btn btn-primary', _id='submit_button'))
     # add test results
     if report_for_entry:
         test_results = build_test_results(report_data)
     else:
-        test_results = DIV(T('No unit tests results found!'))
-        # TODO Add button to build when not yet done!
+        test_results = ''
+        if entry_to_be_opened:
+            build_entry_link = A(T('Build entry'), _class='btn btn-primary',
+                                 _href=URL(c='entry', f='build', args=(task_for_which_to_open_entry, entry_to_be_opened)))
+            test_results = DIV(DIV(T('No unit tests results found!')), build_entry_link)
+    # add task description
+    task_from_db = db(db.Tasks.id == task_for_which_to_open_entry).select().first()
+    task_description_path = os.path.join(task_from_db.DataPath, 'description.md')
+    with open(task_description_path, 'r') as task_description_file:
+        task_description = XML(markdown2.markdown(task_description_file.read()))
     return locals()
 
 

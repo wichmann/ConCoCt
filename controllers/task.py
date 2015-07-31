@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import os
+import json
 from zipfile import ZipFile
+
 from gluon.contrib.markdown import markdown2
 
 
@@ -32,9 +34,17 @@ def view():
         with open(task_description_path, 'r') as task_description:
             description = XML(markdown2.markdown(task_description.read()))
         back_button = A(T('Back'), _href=URL(f='list'), _class='btn btn-primary', _id='back_button')
-        submit_entry_button = A(T('Submit entry'), _href=URL(c='entry',f='add', args=(task_to_be_shown)), _class='btn btn-primary', _id='submit_entry_button')
-        return dict(description=description, back_button=back_button,
-                    submit_entry_button=submit_entry_button,
+        submit_entry_button = A(T('Submit entry'), _href=URL(c='entry',f='add', args=(task_to_be_shown)),
+                                _class='btn btn-primary', _id='submit_entry_button')
+        open_empty_file_button = A(T('Open empty file'), _href=URL(c='default', f='codeeditor', args=(task_to_be_shown,)),
+                                   _class='btn btn-primary', _id='open_new_button')
+        statistics = []
+        statistics.append(DIV(T('Submitted entries: '), SPAN('{}'.format(count_entries(task_to_be_shown)), _class='badge'),  _class='btn btn-primary'))
+        statistics.append(DIV(T('Executed builds: '), SPAN('{}'.format(count_executed_builds(task_to_be_shown)), _class='badge'),  _class='btn btn-primary'))
+        statistics.append(DIV(T('Successful builds: '), SPAN('{}'.format(count_successful_builds(task_to_be_shown)), _class='badge'),  _class='btn btn-primary'))
+        statistics = DIV(*statistics)
+        return dict(description=description, back_button=back_button, statistics=statistics,
+                    submit_entry_button=submit_entry_button, open_empty_file_button=open_empty_file_button,
                     task_name=row.select().first()['Name'])
     else:
         raise HTTP(404, T('No task number given.'))
@@ -54,7 +64,9 @@ def list():
                                      _class='btn btn-primary', _id='view_button-{}'.format(task.id))
         upload_entry_for_task_button = A(T('Submit entry'), _href=URL(c='entry', f='add', args=(task.id,)),
                                          _class='btn btn-primary', _id='submit_button-{}'.format(task.id))
-        button_group = DIV(view_current_task_button, upload_entry_for_task_button, _class='btn-group pull-right')
+        open_empty_file_button = A(T('Open empty file'), _href=URL(c='default', f='codeeditor', args=(task.id,)),
+                                   _class='btn btn-primary', _id='open_button-{}'.format(task.id))
+        button_group = DIV(view_current_task_button, open_empty_file_button, upload_entry_for_task_button, _class='btn-group pull-right')
         task_link = DIV(DIV(current_title_text), DIV(button_group), _id=current_title_id, _class='panel-heading clearfix')
         task_description_path = os.path.join(task.DataPath, 'description.md')
         # build panel body containing task description
@@ -74,6 +86,37 @@ def list():
                 {moreScript}
                 """.format(moreScript=script_parts_list))
     return dict(task_table=task_table, script=script)
+
+
+
+def count_entries(task_id):
+    entries = db(db.Entries.Task == task_id).count()
+    return entries
+
+
+def count_executed_builds(task_id):
+    builds = db(db.Builds.Task == task_id).count()
+    return builds
+
+
+def count_successful_builds(task_id):
+    builds = db(db.Builds.Task == task_id).select(db.Builds.Report, distinct=True)
+    count_successful = 0
+    for build in builds:
+        build_successful = True
+        if build['Report']:
+            report = json.loads(build['Report'])
+            if 'cunit' in report and 'tests' in report['cunit']:
+                for suite in report['cunit']['tests']:
+                    suite = report['cunit']['tests'][suite]
+                    for test in suite:
+                        if not suite[test]:
+                            build_successful = False
+            else:
+                build_successful = False
+        if build_successful:
+            count_successful += 1
+    return count_successful
 
 
 @auth.requires_membership('teacher')

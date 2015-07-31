@@ -57,8 +57,29 @@
 
 <div id="button-pane" class="col-md-12">
   <div class="text-center">
-    <div id="submit_button_div">
-      {{=submit_button}}
+    {{=submit_button}}
+    <span>
+      <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#task-description-modal">
+        {{=T('View task description...')}}
+      </button>
+    </span>
+  </div>
+</div>
+
+<!-- Modal dialog for displaying task description -->
+<div class="modal fade" id="task-description-modal" tabindex="-1" role="dialog" aria-labelledby="task-description-modal-label">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="task-description-title">{{=T('Task description')}}</h4>
+      </div>
+      <div class="modal-body">
+        {{=task_description}}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">{{=T('Close')}}</button>
+      </div>
     </div>
   </div>
 </div>
