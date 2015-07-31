@@ -35,12 +35,12 @@ def list():
         # get all entries for current task sorted by submission time
         entries = db((db.Entries.Submitter == auth.user_id) & (db.Entries.Task == current_task.id)).select(orderby=~db.Entries.SubmissionTime)
         entry_rows = []
-        entry_rows.append(TR(TD('Entry'), TD('Uploaded'), TD('Edit'), TD('Build'), _class='table_header'))
+        entry_rows.append(TR(TD(T('Entry')), TD(T('Uploaded')), TD(T('Edit entry')), TD(T('Build entry')), _class='table_header'))
         for entry in entries:
             # build table row of current entry for current task
-            entry_text = 'Entry no. {}'.format(entry.id)
-            edit_entry_link = A('Edit entry', _href=URL(c='default', f='codeeditor', args=(entry.Task, entry.id)))
-            build_entry_link = A('Build entry', _href=URL(f='build', args=(entry.Task, entry.id)))
+            entry_text = T('Entry no. {}').format(entry.id)
+            edit_entry_link = A(T('Edit entry'), _href=URL(c='default', f='codeeditor', args=(entry.Task, entry.id)))
+            build_entry_link = A(T('Build entry'), _href=URL(f='build', args=(entry.Task, entry.id)))
             entry_rows.append(TR(TD(entry_text), TD(prettydate(entry.SubmissionTime,T)), TD(edit_entry_link),
                                  TD(build_entry_link), _id='entry_data-{}'.format(entry.id)))
         # build panel and its header
@@ -48,7 +48,7 @@ def list():
         task_panel_body_id = 'task_body-{}'.format(current_task.id)
         entry_table = TABLE(*entry_rows, _class='table table-hover')
         current_task_table = DIV(entry_table, _class='panel-body', _id=task_panel_body_id)
-        new_task_panel_header = H3('Task number {task_id}: {task_name}'.format(task_id=current_task.id, task_name=current_task.Name),
+        new_task_panel_header = H3(T('Task number {task_id}: {task_name}').format(task_id=current_task.id, task_name=current_task.Name),
                                    _class='panel-title')
         current_task_header = DIV(new_task_panel_header, _class='panel-heading', _id=task_panel_heading_id)
         task_div_list.append(DIV(current_task_header, current_task_table, _class='panel panel-default'))
@@ -129,13 +129,24 @@ def build():
     if request.args:
         if len(request.args) != 2:
             raise HTTP(404, T('Invalid number of arguments.'))
-        # TODO Validate arguments against database.
+        # validate task number against database
         task_to_be_build = request.args[0]
+        task_from_db = db(db.Tasks.id == task_to_be_build).select().first()
+        if not task_from_db:
+            raise HTTP(404, T('Invalid task id.'))
+        tasks_store_path = task_from_db['DataPath']
+        # validate entry number against database
         entry_to_be_build = request.args[1]
-        entries_solution_file = db(db.Entries.id == entry_to_be_build).select().first()['OnDiskPath']
-        tasks_store_path = db(db.Tasks.id == task_to_be_build).select().first()['DataPath']
+        entry_from_db = db(db.Entries.id == entry_to_be_build).select().first()
+        if not entry_from_db:
+            raise HTTP(404, T('Invalid entry id.'))
+        # TODO Check whether to store task and entry id in Builds table as
+        #      strings or as integers!
+        if str(entry_from_db['Task']) != task_to_be_build:
+            raise HTTP(404, T('Invalid entry id for given task.'))
+        entries_solution_files = (entry_from_db['OnDiskPath'], )
         # start building entry for task
-        building = celery_tasks.build_and_check_task_with_solution.delay(tasks_store_path, entries_solution_file)
+        building = celery_tasks.build_and_check_task_with_solution.delay(tasks_store_path, entries_solution_files)
         # store build job in database including Celery UUID
         build_id = db.Builds.insert(Task=task_to_be_build, Entry=entry_to_be_build,
                                     CeleryUUID=building.id, Finished=False)

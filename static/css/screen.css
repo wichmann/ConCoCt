@@ -31,16 +31,25 @@ body {
 #editor {
   position: relative;
   height: 600px;
-  width: 80%;
+  width: 100%;
   font-size: 14pt;
 }
 
-.warning {
+#editor .warning {
   position: absolute;
-  background: yellow;
+  background: #fff99d;
   z-index: 20;
 }
 
+#editor .error {
+  position: absolute;
+  background: #ff2f2f;
+  z-index: 20;
+}
+
+.test-result-label {
+   padding-left: 20px;
+}
 /*************** styles for tasks function ***************/
 #task-description {
 }

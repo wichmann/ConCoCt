@@ -9,7 +9,7 @@ now=datetime.datetime.now()
 db.define_table(
     'Tasks',
     Field('Name', 'string', writable=False, readable=False),
-    Field('Teacher', db.auth_user, required=True, label=T('Teacher')),
+    Field('Teacher', db.auth_user, writable=False, readable=False, required=True, label=T('Teacher')),
     Field('OpenForSubmission','boolean', label=T('OpenForSubmission')),
     Field('SubmittedTask', 'upload', label=T('Task to be uploaded')),
     Field('DataPath', 'string', writable=False, readable=False),

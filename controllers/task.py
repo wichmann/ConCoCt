@@ -49,10 +49,12 @@ def list():
         # on the right side
         current_description_id = 'description-{}'.format(task.id)
         current_title_id = 'tasktitle-{}'.format(task.id)
-        current_title_text = H3('Task: {}'.format(task.Name), _class='panel-title pull-left')
+        current_title_text = H3(T('Task: {}').format(task.Name), _class='panel-title pull-left')
         view_current_task_button = A(T('View task'), _href=URL(c='task', f='view', args=(task.id,)),
                                      _class='btn btn-primary', _id='view_button-{}'.format(task.id))
-        button_group = DIV(view_current_task_button, _class='btn-group pull-right')
+        upload_entry_for_task_button = A(T('Submit entry'), _href=URL(c='entry', f='add', args=(task.id,)),
+                                         _class='btn btn-primary', _id='submit_button-{}'.format(task.id))
+        button_group = DIV(view_current_task_button, upload_entry_for_task_button, _class='btn-group pull-right')
         task_link = DIV(DIV(current_title_text), DIV(button_group), _id=current_title_id, _class='panel-heading clearfix')
         task_description_path = os.path.join(task.DataPath, 'description.md')
         # build panel body containing task description
@@ -126,11 +128,13 @@ def store_task_archive(response):
         # check if task directory already exists (task name must be unique!!!!)
         tasks_store_path = os.path.join(request.folder, 'private/tasks/')
         new_task_directory_path = os.path.join(tasks_store_path, task_name)
-        if os.path.exists(new_task_store_path):
+        if os.path.exists(new_task_directory_path):
+            # when task is already on the server, do not unzip again
+            # TODO: Handle replacing of a task with a newer version with the same name.
             return ('', '')
-        os.mkdir(new_task_store_path)
+        os.mkdir(new_task_directory_path)
         task_archive.extract(task_name + '/description.md', path=tasks_store_path)
-        #task_archive.extract(task_name + '/config.json', path=tasks_store_path)
+        task_archive.extract(task_name + '/config.json', path=tasks_store_path)
         for filename in task_archive.namelist():
             #source_store_path = os.path.join(tasks_store_path, 'src')
             if filename.startswith(task_name + '/src/'):
