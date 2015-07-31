@@ -2,10 +2,14 @@
 
 import os
 import shutil
+import datetime
+
 from gluon.tools import prettydate
+
 # TODO Fix import problematic because base dir of web2py is different from
 #      working directory of Celery worker!
 import celery_tasks
+import libConCoCt
 
 
 @auth.requires_login()
@@ -35,14 +39,18 @@ def list():
         # get all entries for current task sorted by submission time
         entries = db((db.Entries.Submitter == auth.user_id) & (db.Entries.Task == current_task.id)).select(orderby=~db.Entries.SubmissionTime)
         entry_rows = []
-        entry_rows.append(TR(TD(T('Entry')), TD(T('Uploaded')), TD(T('Edit entry')), TD(T('Build entry')), _class='table_header'))
+        entry_rows.append(TR(TD(T('Entry')), TD(T('Uploaded')), TD(T('Edit entry')), TD(T('Build entry')),
+                             TD(T('Download source file')), TD(T('Download CodeBlocks project')), _class='table_header'))
         for entry in entries:
             # build table row of current entry for current task
             entry_text = T('Entry no. {}').format(entry.id)
             edit_entry_link = A(T('Edit entry'), _href=URL(c='default', f='codeeditor', args=(entry.Task, entry.id)))
             build_entry_link = A(T('Build entry'), _href=URL(f='build', args=(entry.Task, entry.id)))
+            download_entry_source_link = A(T('Download source file'), _href=URL(f='download', args=(entry.Task, entry.id, 'source')))
+            download_entry_project_link = A(T('Download CodeBlocks project'), _href=URL(f='download', args=(entry.Task, entry.id, 'project')))
             entry_rows.append(TR(TD(entry_text), TD(prettydate(entry.SubmissionTime,T)), TD(edit_entry_link),
-                                 TD(build_entry_link), _id='entry_data-{}'.format(entry.id)))
+                                 TD(build_entry_link), TD(download_entry_source_link), TD(download_entry_project_link),
+                                 _id='entry_data-{}'.format(entry.id)))
         # build panel and its header
         task_panel_heading_id = 'task_heading-{}'.format(current_task.id)
         task_panel_body_id = 'task_body-{}'.format(current_task.id)
@@ -68,6 +76,49 @@ def upload():
         if form.process().accepted:
             response.flash = T('Entry submitted!')
     return locals()
+
+
+@auth.requires_login()
+def download():
+    """
+    Allows the user to download an entry as single source file or as complete
+    CodeBlocks project. First argument has to be a valid task number followed by
+    a valid entry number. After that a format option can be given, either
+    "source" for downloading a single source file or "project" for downloading
+    a single ZIP file containing the entire CodeBlocks project.
+    """
+    if request.args:
+        # TODO Refactor validation code for build and entry id to separate functions!
+        if len(request.args) != 3:
+            raise HTTP(404, T('Invalid number of arguments.'))
+        # validate task number against database
+        task_to_be_downloaded = request.args[0]
+        task_from_db = db(db.Tasks.id == task_to_be_downloaded).select().first()
+        if not task_from_db:
+            raise HTTP(404, T('Invalid task id.'))
+        # validate entry number against database
+        entry_to_be_downloaded = request.args[1]
+        entry_from_db = db(db.Entries.id == entry_to_be_downloaded).select().first()
+        if not entry_from_db:
+            raise HTTP(404, T('Invalid entry id.'))
+        if str(entry_from_db['Task']) != task_to_be_downloaded:
+            raise HTTP(404, T('Invalid entry id for given task.'))
+        # get entry as single source file or as CodeBlocks project
+        file_name = entry_from_db['OnDiskPath']
+        if request.args[2] == 'source':
+            return response.stream(file_name, chunk_size=4096, attachment=True, filename='solution.c')
+        elif request.args[2] == 'project':
+            t = libConCoCt.Task(task_from_db['DataPath'])
+            s = libConCoCt.Solution(t, (file_name, ))
+            p = t.get_main_project(s)
+            current_date = datetime.datetime.now().strftime('%Y-%m-%d')
+            zip_file_name = '{}_{}.zip'.format(task_from_db['Name'], current_date)
+            project_zip_file = p.create_cb_project(file_name=os.path.join(request.folder, 'private', zip_file_name))
+            return response.stream(project_zip_file, chunk_size=2**14, attachment=True, filename=zip_file_name)
+        else:
+            raise HTTP(404, T('No format option (source, project) given.'))
+    else:
+        raise HTTP(404, T('No task number given.'))
 
 
 @auth.requires_login()
