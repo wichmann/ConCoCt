@@ -19,6 +19,7 @@ db = DAL(concoct_conf.take('db.uri'), pool_size=concoct_conf.take('db.pool_size'
 
 ## by default give a view/generic.extension to all actions from localhost
 ## none otherwise. a pattern can be 'controller/function.extension'
+#response.generic_patterns=['*.json']
 response.generic_patterns = ['*'] if request.is_local else []
 ## choose a style for forms
 response.formstyle = concoct_conf.take('forms.formstyle')  # or 'bootstrap3_stacked' or 'bootstrap2' or other

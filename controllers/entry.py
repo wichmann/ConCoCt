@@ -251,31 +251,43 @@ def build():
         # setup components to display status and results of build
         status_box = DIV(_id='build_status')
         result_box = DIV(_id='build_results')
+        # check if build results should be shown or if user should be redirected
+        # to code editor (config value is compared to string because getboolean()
+        # method of configparser is not available in web2py appconfig module)
+        js_redirect = ''
+        if concoct_conf.take('handling.show_build_information') != 'yes':
+            js_redirect = 'window.location.replace("{}");'.format(URL(c='default', f='codeeditor', args=(task_to_be_build, entry_to_be_build)))
         script = SCRIPT("""
                         var intervalID = setInterval(function(){{ reload() }}, 250);
+                        var results_already_inserted = 0;
 
                         function reload()
                         {{
                             $.get("{reload_url}", function(data) {{
                                 $("#build_status").text(data.status);
-                                //var json_data = JSON.stringify(data.test_results, undefined, 4);
-                                //$("#build_results").add("pre").html(json_data);
-                                $("#build_results").text(data.test_results);
                                 if (data.test_results != ""){{
-                                    // show button when result is in
-                                    $("#forward_button").show();
-                                    // stop animation of gear
-                                    var image = $("#big-gears-turning");
-                                    image.css("animation-play-state", "paused");
-                                    image.css("-webkit-animation-play-state", "paused");
-                                    // clear timer
-                                    clearInterval(intervalID);
+                                    if (results_already_inserted == 0) {{
+                                        results_already_inserted = 1;
+                                        {redirect}
+                                        // output pretty printed test results
+                                        var json_data = JSON.stringify(JSON.parse(data.test_results), undefined, 4);
+                                        $("#build_results").append("<pre>" + json_data + "</pre>");
+                                        // show button when result is in
+                                        $("#forward_button").show();
+                                        // stop animation of gear
+                                        var image = $("#big-gears-turning");
+                                        image.css("animation-play-state", "paused");
+                                        image.css("-webkit-animation-play-state", "paused");
+                                        // clear timer
+                                        clearInterval(intervalID);
+                                    }};
                                 }};
                             }});
                         }};
 
                         $("#forward_button").hide();
-                        """.format(reload_url=URL(r=request, c='entry', f='build_status.json', args=(build_id,))))
+                        """.format(reload_url=URL(r=request, c='entry', f='build_status.json', args=(build_id,)),
+                                   redirect=js_redirect))
         forward_button = A(T('Results'), _href=URL(c='default', f='codeeditor', args=(task_to_be_build, entry_to_be_build)),
                            _class='btn btn-primary', _id='forward_button')
         return dict(status_box=status_box, result_box=result_box, forward_button=forward_button, script=script, build_id=build_id)
