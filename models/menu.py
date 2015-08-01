@@ -6,7 +6,8 @@ response.meta.author = '%(author)s <%(author_email)s>' % settings
 response.meta.keywords = settings.keywords
 response.meta.description = settings.description
 
-response.logo = A('ConCoCt', _class="navbar-brand", _href=URL('default', 'index'))
+#response.logo = IMG(_class='img-rounded', _src=URL('static', 'images/logo.png'), _height='50px')
+response.logo = A('ConCoct', _class="navbar-brand", _href=URL('default', 'index'))
 
 response.menu = []
 if auth.is_logged_in():
