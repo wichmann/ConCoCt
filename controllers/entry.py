@@ -15,21 +15,24 @@ import libConCoCt
 @auth.requires_login()
 def list():
     """
-    Allows to upload, view and edit entries for given task.
+    Lists all entries by the current user for all tasks. For every task a
+    separate panel is shown. All panels are collapsed by default, if no task id
+    is given as argument. When a valid task id is given, the panel of that task
+    is opened.
 
-    /entry/list -> list all entries for current user or all entries for given task???
-    /entry/upload/[task id] -> upload a single! source code file (solution.c) as entry for a given task
-                               forwarding to /entry/build/[task id] to wait for background process to run entry
-    /entry/add/[task id] -> add a new entry from scratch (solution.c from task directory) and open code editor
-                            by clicking 'build' button', building of entry and highlighting of errors in source
-                            Results of tests will be shown in editor or separate DIV???
-    /entry/build/[task id]/[entry id] -> build entry and wait, show build information when build is ready
-                                         if entry id is empty, newest entry of current user for given task is build!!!
-    /entry/build_status/[build id] -> returns build information (status, report) as JSON data
-                                      error when no build id is given
-    /entry/view/[task id] -> view result of compilation and run of entry
-                             button to forward to code editor opened with current entry for given task
+    /entry/list -> list all entries for all tasks, all task panels closed
+    /entry/list/[task id] -> list all entries for all tasks, task with given
+                             task id is opened
     """
+    # check if a task number was given
+    if request.args:
+        try:
+            task_to_be_viewed = int(request.args[0])
+        except ValueError:
+            task_to_be_viewed = ''
+    else:
+        task_to_be_viewed = ''
+    # get all task that should be listed
     tasks_in_entries = db(db.Entries.Submitter == auth.user_id).select(orderby=db.Entries.Task, groupby=db.Entries.Task)
     task_div_list = []
     js_toggle_panels = ''
@@ -61,20 +64,11 @@ def list():
         current_task_header = DIV(new_task_panel_header, _class='panel-heading', _id=task_panel_heading_id)
         task_div_list.append(DIV(current_task_header, current_task_table, _class='panel panel-default'))
         # create JavaScript to toggle panels by clicking on their header
-        js_toggle_panels += '$("#{contentID}").hide();'.format(contentID=task_panel_body_id)
+        if not task_to_be_viewed or task_to_be_viewed != current_task.id:
+            js_toggle_panels += '$("#{contentID}").hide();'.format(contentID=task_panel_body_id)
         js_toggle_panels += '$("#{titleID}").click(function(){{ $("#{contentID}").slideToggle(); }});'.format(titleID=task_panel_heading_id, contentID=task_panel_body_id)
     complete_entry_list = DIV(task_div_list)
     js_toggle_panels = SCRIPT(js_toggle_panels)
-    return locals()
-
-
-@auth.requires_login()
-def upload():
-    if request.args:
-        form = SQLFORM(db.Entries)
-        # validate and process the form
-        if form.process().accepted:
-            response.flash = T('Entry submitted!')
     return locals()
 
 
@@ -86,6 +80,8 @@ def download():
     a valid entry number. After that a format option can be given, either
     "source" for downloading a single source file or "project" for downloading
     a single ZIP file containing the entire CodeBlocks project.
+
+    /entry/download/[task id]/[entry id] ->
     """
     if request.args:
         # TODO Refactor validation code for build and entry id to separate functions!
@@ -124,13 +120,25 @@ def download():
 @auth.requires_login()
 def add():
     """
-    Displays a form to upload a new entry for a given task.
+    Displays a form to upload a new entry for a given task. Exactly one argument
+    is needed as task id. If no arguments are given this function returns a
+    404 error.
 
-    Exactly one argument is needed as task id. If no arguments are given this
-    function returns a 404 error.
+    If this page is visited by browser a form is displayed to upload a single
+    source code file. Furthermore, this page can be called by e.g. an AJAX call
+    with the content for the entry (source code) as data in the POST request. In
+    both cases the source file is stored in the filesystem and an database entry
+    is created including the file path and submitter data.
+
+    If the request is send by AJAX including POST data, the POST variable
+    "filecontent" has to be set, for this function to recognize the data!
 
     TODO: Implement custom store and retrieve functions instead of copying the file.
     (See: http://stackoverflow.com/questions/8008213/web2py-upload-with-original-filename)
+
+    /entry/upload/[task id] -> add a new entry for the task with the given id
+                               and forward to /entry/build/[task id] to wait for
+                               background process to build entry
     """
     if request.args:
         # check if argument is valid task number
@@ -196,13 +204,22 @@ def build():
     """
     Builds an entry for a given task. The two required parameter are the task id
     and the entry id. This function creates a new build with an unique build id.
-
     The database contains under that build id also an UUID used by Celery to
     identify a task on worker instances.
 
     If this function is called to return JSON content, the generated build id is
     returned as "build_id" in the response. Otherwise this page is rendered as
     HTML.
+
+    This page has a maximum number of requests per minute that produces a 429
+    error when it is exceeded!
+
+    TODO Check whether to build newest entry of current user for given task if
+         entry id is empty?!
+
+    /entry/build/[task id]/[entry id] -> build entry and wait, poll regularly
+                                         via AJAX whether build complete and
+                                         show build information when ready
     """
     if request.args:
         if len(request.args) != 2:
@@ -223,6 +240,9 @@ def build():
         if str(entry_from_db['Task']) != task_to_be_build:
             raise HTTP(404, T('Invalid entry id for given task.'))
         entries_solution_files = (entry_from_db['OnDiskPath'], )
+        # check how many build the user made in the last minute
+        if check_if_too_many_requests():
+            raise HTTP(429, T('Too many requests in the last minute.'))
         # start building entry for task
         building = celery_tasks.build_and_check_task_with_solution.delay(tasks_store_path, entries_solution_files)
         # store build job in database including Celery UUID
@@ -256,6 +276,20 @@ def build():
         raise HTTP(404, T('No task number given.'))
 
 
+def check_if_too_many_requests():
+    """
+    Checks whether too many requests per minute were sent. The maximum number of
+    requests can be changed in the applications config file (/private/appconfig.ini).
+    """
+    one_minute_past = datetime.datetime.now() - datetime.timedelta(minutes=1)
+    number_of_requests = db ((db.Builds.created_by == auth.user_id) &
+                             (db.Builds.created_on > one_minute_past)).count()
+    if number_of_requests > concoct_conf.take('handling.max_requests_per_minute', cast=int):
+        return True
+    else:
+        return False
+
+
 @auth.requires_login()
 def build_status():
     """
@@ -273,6 +307,10 @@ def build_status():
     If simply a dictionary is returned, web2py will use the associated view to
     display the data when not asked for JSON data. Local variables can be
     explicitly rendered into JSON with: return response.json(custdata)
+
+    /entry/build_status/[build id] -> returns build information (status, report)
+                                      as JSON data or returns 404 error when no
+                                      build id is given
     """
     if request.args:
         requested_build_id = request.args[0]
@@ -302,6 +340,11 @@ def build_status():
 
 @auth.requires_login()
 def view():
+    """
+    Views data of a single entry for a given task.
+
+    /entry/view/[task id]/[entry id] -> view data of entry for given task
+    """
     if request.args:
         # validate task number against database
         task_to_be_viewed = request.args[0]
@@ -348,6 +391,7 @@ def view():
                   DIV(LABEL(number_of_builds), _class="col-md-9"),
                   _class="form-group")
         list_of_elements.append(div)
+        # TODO Show data from builds!
         grid = FORM(*list_of_elements, _class='form-horizontal')
         return dict(grid=grid, task_name=task_from_db['Name'])
     else:

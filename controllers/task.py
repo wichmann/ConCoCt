@@ -39,7 +39,8 @@ def view():
         open_empty_file_button = A(T('Open empty file'), _href=URL(c='default', f='codeeditor', args=(task_to_be_shown,)),
                                    _class='btn btn-primary', _id='open_new_button')
         statistics = []
-        statistics.append(DIV(T('Submitted entries: '), SPAN('{}'.format(count_entries(task_to_be_shown)), _class='badge'),  _class='btn btn-primary'))
+        statistics.append(DIV(A(T('Submitted entries: '), SPAN('{}'.format(count_entries(task_to_be_shown)), _class='badge'),
+                                _href=URL(c='entry',f='list', args=(task_to_be_shown))), _class='btn btn-primary'))
         statistics.append(DIV(T('Executed builds: '), SPAN('{}'.format(count_executed_builds(task_to_be_shown)), _class='badge'),  _class='btn btn-primary'))
         statistics.append(DIV(T('Successful builds: '), SPAN('{}'.format(count_successful_builds(task_to_be_shown)), _class='badge'),  _class='btn btn-primary'))
         statistics = DIV(*statistics)

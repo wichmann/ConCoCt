@@ -1,19 +1,43 @@
-ConCoct
+ConCoCt
 =======
 
 Description
 -----------
-ConCoct is a web application to automatically compile and test simple programs
+ConCoCt is a web application to automatically compile and test simple programs
 written in the C programming language.
 
 
 Deployment
 ----------
+1) Create an web2py directory to be used by your web server.
+
+2) Clone ConCoCt repository from Github [1] to web2py/applications/.
+
+3) Change database and mail configuration in ConCoCt/private/appconfig.ini.
+
+4) Clone libConCoCt repository from Github [2] and add symbolic links for files
+   (celery_tasks.py and libConCoCt.py) to ConCoct/modules.
+
+5) Go to http://[server address]/admin and reload routes.
+
+6) Go to http://[server address]/ConCoct and log in as null@null.com with the
+   admin password "1234".
+
+7) Change the name, password and email address of the administrator account.
+
+8) Create new accounts for teachers and students under /ConCoCt/appadmin.
+
+9) Import example tasks from directory ConCoCt/private/examples.
+
+10) Remove logging.py from model in production???
+
+[1] https://github.com/wichmann/ConCoCt.git
+[2] https://github.com/wichmann/libConCoCt.git
 
 
 License
 -------
-ConCoct is released under the MIT License.
+ConCoCt is released under the MIT License.
 
 
 Translations

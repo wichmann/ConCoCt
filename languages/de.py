@@ -293,6 +293,7 @@
 'This email already has an account': 'Zu dieser Email-Adresse gibt es bereits einen Account',
 'Time in Cache (h:m:s)': 'Zeit im Cache (h:m:s)',
 'Timestamp': 'Zeitstempel',
+'Too many requests in the last minute.': 'Zu viele Anfrage während der letzten Minute.',
 'Too much arguments given!': 'Zu viele Argumente angegeben!',
 'Traceback': 'Traceback',
 'Twitter': 'Twitter',
