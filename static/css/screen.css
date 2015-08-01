@@ -89,6 +89,14 @@ body {
 #task-description {
 }
 
+#submitted_entries_badge:link {
+   color: white;
+}
+
+#submitted_entries_badge:visited {
+   color: white;
+}
+
 .task_caption {
   color: red;
 }

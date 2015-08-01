@@ -6,6 +6,8 @@ from zipfile import ZipFile
 
 from gluon.contrib.markdown import markdown2
 
+import libConCoCt
+
 
 @auth.requires_login()
 def view():
@@ -38,15 +40,17 @@ def view():
                                 _class='btn btn-primary', _id='submit_entry_button')
         open_empty_file_button = A(T('Open empty file'), _href=URL(c='default', f='codeeditor', args=(task_to_be_shown,)),
                                    _class='btn btn-primary', _id='open_new_button')
+        open_empty_project_button = A(T('Open empty CodeBlocks project'), _href=URL(c='task', f='download_project', args=(task_to_be_shown,)),
+                                   _class='btn btn-primary', _id='open_project_button-{}'.format(task_to_be_shown))
         statistics = []
         statistics.append(DIV(A(T('Submitted entries: '), SPAN('{}'.format(count_entries(task_to_be_shown)), _class='badge'),
-                                _href=URL(c='entry',f='list', args=(task_to_be_shown))), _class='btn btn-primary'))
+                                _id='submitted_entries_badge', _href=URL(c='entry',f='list', args=(task_to_be_shown))), _class='btn btn-primary'))
         statistics.append(DIV(T('Executed builds: '), SPAN('{}'.format(count_executed_builds(task_to_be_shown)), _class='badge'),  _class='btn btn-primary'))
         statistics.append(DIV(T('Successful builds: '), SPAN('{}'.format(count_successful_builds(task_to_be_shown)), _class='badge'),  _class='btn btn-primary'))
         statistics = DIV(*statistics)
         return dict(description=description, back_button=back_button, statistics=statistics,
                     submit_entry_button=submit_entry_button, open_empty_file_button=open_empty_file_button,
-                    task_name=row.select().first()['Name'])
+                    open_empty_project_button=open_empty_project_button, task_name=row.select().first()['Name'])
     else:
         raise HTTP(404, T('No task number given.'))
 
@@ -67,7 +71,9 @@ def list():
                                          _class='btn btn-primary', _id='submit_button-{}'.format(task.id))
         open_empty_file_button = A(T('Open empty file'), _href=URL(c='default', f='codeeditor', args=(task.id,)),
                                    _class='btn btn-primary', _id='open_button-{}'.format(task.id))
-        button_group = DIV(view_current_task_button, open_empty_file_button, upload_entry_for_task_button, _class='btn-group pull-right')
+        open_empty_project_button = A(T('Open empty CodeBlocks project'), _href=URL(c='task', f='download_project', args=(task.id,)),
+                                   _class='btn btn-primary', _id='open_project_button-{}'.format(task.id))
+        button_group = DIV(view_current_task_button, open_empty_project_button, open_empty_file_button, upload_entry_for_task_button, _class='btn-group pull-right')
         task_link = DIV(DIV(current_title_text), DIV(button_group), _id=current_title_id, _class='panel-heading clearfix')
         task_description_path = os.path.join(task.DataPath, 'description.md')
         # build panel body containing task description
@@ -118,6 +124,51 @@ def count_successful_builds(task_id):
         if build_successful:
             count_successful += 1
     return count_successful
+
+
+def validate_task_id(task_id):
+    """
+    Validates a given task number. The given id can be directly taken from the
+    arguments of the request (e.g. request.args[0]). This function checks
+    whether the task id is really a integer and if it is inside the database.
+    Furthermore it checks if the current user is authorized to handle this task.
+
+    In case of errors, the response is an 404 error with a error message.
+
+    :param task_id: task id to be validated
+    :returns: task from database as Row object
+    """
+    # check if argument is valid integer number
+    try:
+        task_as_int = int(request.args[0])
+    except ValueError:
+        raise HTTP(404, T('Invalid argument given.'))
+    # validate task number against database
+    task_from_db = db(db.Tasks.id == task_as_int).select().first()
+    if not task_from_db:
+        raise HTTP(404, T('Invalid task id given.'))
+    # TODO Check authorization of user for this task.
+    return task_from_db
+
+
+@auth.requires_login()
+def download_project():
+    if request.args:
+        task_from_db = validate_task_id(request.args[0])
+        data_path = task_from_db['DataPath']
+        # TODO Refactor the project creation to separate module.
+        t = libConCoCt.Task(data_path)
+        with open(os.path.join(data_path, 'config.json'), 'r') as config_file:
+            task_config = json.load(config_file)
+        solution_file = os.path.join(data_path, 'src', task_config['files_student'][0])
+        s = libConCoCt.Solution(t, (solution_file, ))
+        p = t.get_main_project(s)
+        current_date = datetime.datetime.now().strftime('%Y-%m-%d')
+        zip_file_name = '{}_{}.zip'.format(task_from_db['Name'], current_date)
+        project_zip_file = p.create_cb_project(file_name=os.path.join(request.folder, 'private', zip_file_name))
+        return response.stream(project_zip_file, chunk_size=2**14, attachment=True, filename=zip_file_name)
+    else:
+        raise HTTP(404, T('No task number given.'))
 
 
 @auth.requires_membership('teacher')

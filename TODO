@@ -1,7 +1,9 @@
 TODO
 ====
 
-* Build solution correctly with task files.
+* Add user statistics as badges in task list (which task was already
+  successfully build for example).
+* Prevent users from building other users solutions when knowing/guessing their
+  entry id.
 * Allow users to share solutions with others.
 * Allow users to grade solutions by other users.
-*
