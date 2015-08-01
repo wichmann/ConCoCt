@@ -27,6 +27,41 @@ body {
 .content-container {
 }
 
+#title-next-to-logo {
+    vertical-align: bottom;
+}
+
+#big-gears-turning {
+  position: fixed;
+  bottom: -200px;
+  right: -250px;
+  z-index: 0;
+}
+
+.rotating {
+  -moz-animation: 10s rotate infinite linear;
+  -moz-transform-origin: 50% 50%;
+  -webkit-animation: 10s rotate infinite linear;
+  -webkit-transform-origin: 50% 50%;
+}
+
+.paused{
+  -webkit-animation-play-state: paused !important;
+  -moz-animation-play-state: paused !important;
+  -o-animation-play-state: paused !important;
+  animation-play-state: paused !important;
+}
+
+@-moz-keyframes rotate {
+    0    { -moz-transform: rotate(0); }
+    100% { -moz-transform: rotate(360deg); }
+}
+
+@-webkit-keyframes rotate {
+    0%    { -webkit-transform: rotate(0); }
+    100% { -webkit-transform: rotate(360deg); }
+}
+
 /*************** styles for code editor ***************/
 #editor {
   position: relative;

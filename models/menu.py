@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 response.title = settings.title
 response.subtitle = settings.subtitle
 response.meta.author = '%(author)s <%(author_email)s>' % settings

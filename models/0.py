@@ -1,4 +1,7 @@
+# -*- coding: utf-8 -*-
+
 from gluon.storage import Storage
+
 settings = Storage()
 
 settings.migrate = True

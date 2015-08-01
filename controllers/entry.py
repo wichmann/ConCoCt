@@ -258,10 +258,17 @@ def build():
                         {{
                             $.get("{reload_url}", function(data) {{
                                 $("#build_status").text(data.status);
+                                //var json_data = JSON.stringify(data.test_results, undefined, 4);
+                                //$("#build_results").add("pre").html(json_data);
                                 $("#build_results").text(data.test_results);
                                 if (data.test_results != ""){{
-                                    // clear timer and show button when result is in
+                                    // show button when result is in
                                     $("#forward_button").show();
+                                    // stop animation of gear
+                                    var image = $("#big-gears-turning");
+                                    image.css("animation-play-state", "paused");
+                                    image.css("-webkit-animation-play-state", "paused");
+                                    // clear timer
                                     clearInterval(intervalID);
                                 }};
                             }});
@@ -319,7 +326,7 @@ def build_status():
         except TypeError:
             raise HTTP(404, T('Invalid build number given.'))
         result = celery_tasks.build_and_check_task_with_solution.AsyncResult(build_id)
-        status = T('Build status: {status}').format(status=result.status)
+        status = T('Build status: {status}').format(status=T(result.status))
         test_results = ''
         if result.ready():
             try:
@@ -330,7 +337,6 @@ def build_status():
                 if not already_finished:
                     chosen_build.update_record(Finished=True)
                     chosen_build.update_record(Report=test_results)
-                    #db.commit()
             except AttributeError:
                 test_results = ''
         return dict(status=status, test_results=test_results)

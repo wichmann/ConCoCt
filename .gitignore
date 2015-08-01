@@ -60,3 +60,9 @@ databases/
 errors/
 sessions/
 uploads/
+private/solutions
+private/tasks
+modules/celery_run.py
+modules/celery_tasks.py
+modules/celeryd.pid
+modules/libConCoCt.py

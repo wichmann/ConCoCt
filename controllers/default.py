@@ -214,14 +214,16 @@ def build_annotations_for_errors(report_data):
             list_of_concerned_lines[line_with_error] = ConcernedLine(message_type, message['desc'])
     # build JavaScript code for annotations
     js_code = ''
+    annotations = ''
     for line_with_error, line_data in list_of_concerned_lines.items():
         # 'line' instead of 'text' as parameter of addMarker() function highlights the whole line
         js_code += u"""editor.getSession().addMarker(new Range({line}, 0, {line}, 100), "{type}", "text");
                     """.format(type=line_data.type, line=line_with_error)
         # add annotation icons for lines with warnings or errors
         # types of annotations for Ace code editor: warning, error, information
-        js_code += u"""editor.getSession().setAnnotations([{{row: {line}, column: 1, text: "{desc}", type: "{type}"}}]);
-                    """.format(type=line_data.type, desc=line_data.desc, line=line_with_error)
+        annotations += u"""{{row: {line}, column: 1, text: "{desc}", type: "{type}"}},
+                        """.format(type=line_data.type, desc=line_data.desc, line=line_with_error)
+    js_code += u'editor.getSession().setAnnotations([{}]);'.format(annotations)
     return js_code
 
 

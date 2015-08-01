@@ -12,4 +12,22 @@
   {{=forward_button}}
 </div>
 
+<img class="media-object rotating" id="big-gears-turning" src="{{=URL('static', 'images/gear_big.png')}}" alt="Big gear">
+
+<script type="text/javascript"><!--
+  $("#big-gears-turning").click(function() {
+    var image = $("#big-gears-turning");
+    if (image.css("animation-play-state") == "paused"){
+      image.css("animation-play-state", "running");
+      image.css("-webkit-animation-play-state", "running");
+    } else {
+      image.css("animation-play-state", "paused");
+      image.css("-webkit-animation-play-state", "paused");
+    }
+    //image.removeClass("rotating").addClass("paused");
+    //var playState = '-webkit-animation-play-state';
+    //image.css(playState, 'paused');
+  });
+//--></script>
+
 {{=script}}
