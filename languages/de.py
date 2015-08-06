@@ -143,6 +143,7 @@
 'Hello World  ## Kommentar': 'Hallo Welt  ',
 'Hello World## Kommentar': 'Hallo Welt',
 'Home': 'Startseite',
+'Hosted on': 'Gehosted auf',
 'How did you get here?': 'Wie sind Sie hier her gelangt?',
 'Id': 'Id',
 'import': 'Importieren',

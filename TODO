@@ -3,6 +3,8 @@ TODO
 
 * Add user statistics as badges in task list (which task was already
   successfully build for example).
+* Add statistics page to view which users have successfully solved what tasks.
+  Maybe grade the user by how many tasks they solved?!
 * Prevent users from building other users solutions when knowing/guessing their
   entry id.
 * Allow users to share solutions with others.

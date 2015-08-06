@@ -6,7 +6,7 @@ from zipfile import ZipFile
 
 from gluon.contrib.markdown import markdown2
 
-import libConCoCt
+import libConCoct.concoct
 
 
 @auth.requires_login()
@@ -14,12 +14,7 @@ def view():
     """
     Shows all tasks if no argument is given or details of a specific task.
 
-    TODO: Use bootstrap panel for displaying task description and other
-          information.
-
-    /task/list -> lists all tasks (includes a button to download task template as ZIP file)
     /task/view/[task id] -> view detailed information about a specific task
-    /task/add -> add a new task by uploading a ZIP file with all information
     """
     if request.args:
         # check if argument is valid integer number
@@ -57,6 +52,13 @@ def view():
 
 @auth.requires_login()
 def list():
+    """
+    Lists all tasks with their description embedded and buttons to show the
+    details, open the source file, create a CodeBlocks project or to upload a
+    source file as solution.
+
+    /task/list -> lists all tasks
+    """
     task_links_list = []
     script_parts_list = ''
     for task in db(db.Tasks.id > 0).select():
@@ -157,11 +159,11 @@ def download_project():
         task_from_db = validate_task_id(request.args[0])
         data_path = task_from_db['DataPath']
         # TODO Refactor the project creation to separate module.
-        t = libConCoCt.Task(data_path)
+        t = libConCoct.concoct.Task(data_path)
         with open(os.path.join(data_path, 'config.json'), 'r') as config_file:
             task_config = json.load(config_file)
         solution_file = os.path.join(data_path, 'src', task_config['files_student'][0])
-        s = libConCoCt.Solution(t, (solution_file, ))
+        s = libConCoct.concoct.Solution(t, (solution_file, ))
         p = t.get_main_project(s)
         current_date = datetime.datetime.now().strftime('%Y-%m-%d')
         zip_file_name = '{}_{}.zip'.format(task_from_db['Name'], current_date)
@@ -184,6 +186,8 @@ def add():
      - src/tests.c    -> unit tests to check if task was sucessfully completed
      - src/solution.c -> code file that should be implemented
      - src/solution.h -> header with prototypes of the functions that should be implemented
+
+    /task/add -> add a new task by uploading a ZIP file with all necessary files
     """
     form = SQLFORM(db.Tasks)
     # validate and process the form

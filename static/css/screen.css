@@ -91,10 +91,12 @@ body {
 
 #submitted_entries_badge:link {
    color: white;
+   text-decoration: none;
 }
 
 #submitted_entries_badge:visited {
    color: white;
+   text-decoration: none;
 }
 
 .task_caption {

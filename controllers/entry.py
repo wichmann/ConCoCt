@@ -9,7 +9,7 @@ from gluon.tools import prettydate
 # TODO Fix import problematic because base dir of web2py is different from
 #      working directory of Celery worker!
 import celery_tasks
-import libConCoCt
+import libConCoct.concoct
 
 
 @auth.requires_login()
@@ -104,8 +104,8 @@ def download():
         if request.args[2] == 'source':
             return response.stream(file_name, chunk_size=4096, attachment=True, filename='solution.c')
         elif request.args[2] == 'project':
-            t = libConCoCt.Task(task_from_db['DataPath'])
-            s = libConCoCt.Solution(t, (file_name, ))
+            t = libConCoct.concoct.Task(task_from_db['DataPath'])
+            s = libConCoct.concoct.Solution(t, (file_name, ))
             p = t.get_main_project(s)
             current_date = datetime.datetime.now().strftime('%Y-%m-%d')
             zip_file_name = '{}_{}.zip'.format(task_from_db['Name'], current_date)
