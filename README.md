@@ -11,45 +11,57 @@ Deployment
 ----------
 1) Create an web2py directory to be used by your web server.
 
-2) Clone ConCoCt repository from Github [1] to web2py/applications/.
+2) Clone ConCoCt repository from [Github](https://github.com/wichmann/ConCoCt.git) to web2py/applications/.
 
 3) Change database and mail configuration in ConCoCt/private/appconfig.ini.
 
-4) Clone libConCoCt repository from Github [2] and add symbolic links for files
+4) Clone libConCoCt repository from [Github](https://github.com/wichmann/libConCoCt.git) and add symbolic links for files
    (celery_tasks.py and libConCoct directory) to ConCoct/modules.
 
+5) Install supervisord, celeryd, rabbitmq-server, python dependencies (docker-py, paramiko, ...)
+  - Problems with Celery segmentation fault:
+    http://stackoverflow.com/questions/10847620/celery-segmentation-fault
+
+5) Rabbitmy configuration
+  - Check if host configuration is ok: Host name set and entry for 127.0.0.1
+    in hosts file.
+  - Set up user and vhost in RabbitMQ:
+        sudo rabbitmqctl add_user myuser mypassword
+        sudo rabbitmqctl add_vhost myvhost
+        sudo rabbitmqctl set_permissions -p myvhost myuser ".*" ".*" ".*"
+
 5) Deploy celery worker via supervisord.
-    - Create a system user for running Celery worker via supervisord.
-          adduser celery_worker
-          usermod -aG docker celery_worker
-    - Set read access for user "celery_worker" for all data directories.
-    - Adjust and copy file celeryd.conf to supervisor configuration.
-          cp celeryd.conf /etc/supervisor/conf.d/
-    - Reread configuration files and update.
-          supervisorctl reread
-          supervisorctl update
-    - Start Celery worker via supervisord.
-          supervisorctl start celery
+  - Create a system user for running Celery worker via supervisord.
+        adduser celery_worker
+        usermod -aG docker celery_worker
+  - Set read access for user "celery_worker" for all data directories.
+  - Adjust and copy file celeryd.conf to supervisor configuration.
+        cp celeryd.conf /etc/supervisor/conf.d/
+  - Reread configuration files and update.
+        supervisorctl reread
+        supervisorctl update
+  - Start Celery worker via supervisord.
+        supervisorctl start celery
 
 6) Create VM running Linux (64bit). [Only if test should be executed in VM
    instead of a Docker container]
-    - Create and install a new VM as user "celery_worker" so that the Celery
-      worker instance can start/control/stop the VM.
-    - Install SSH server inside VM.
-    - Add new user "testrunner" inside VM.
-            adduser testrunner
-    - Change PAM limits in /etc/security/limits.conf inside VM:
-            testrunner	hard    nproc       10
-            testrunner	hard    nofile      200
-            testrunner  hard    core        500000
-            testrunner  hard    data        500000
-            testrunner  hard    fsize       500000
-            testrunner  hard    stack       500000
-            testrunner  hard    cpu         5
-            testrunner  hard    as          500000
-            testrunner  hard    nice        20
-            testrunner	hard    maxlogins   1
-    - Adjust settings for connecting to VM via SSH in libConCoct.py file on host.
+  - Create and install a new VM as user "celery_worker" so that the Celery
+    worker instance can start/control/stop the VM.
+  - Install SSH server inside VM.
+  - Add new user "testrunner" inside VM.
+          adduser testrunner
+  - Change PAM limits in /etc/security/limits.conf inside VM:
+          testrunner	hard    nproc       10
+          testrunner	hard    nofile      200
+          testrunner	hard    core        500000
+          testrunner	hard    data        500000
+          testrunner	hard    fsize       500000
+          testrunner	hard    stack       500000
+          testrunner	hard    cpu         5
+          testrunner	hard    as          500000
+          testrunner	hard    nice        20
+          testrunner	hard    maxlogins   1
+  - Adjust settings for connecting to VM via SSH in libConCoct.py file on host.
 
 7) Start web2py web server or integrated web2py into Apache/Nginx/etc.
 
@@ -63,9 +75,6 @@ Deployment
 11) Create new accounts for teachers and students under /ConCoCt/appadmin.
 
 12) Import example tasks from directory ConCoCt/private/examples.
-
-[1] https://github.com/wichmann/ConCoCt.git
-[2] https://github.com/wichmann/libConCoCt.git
 
 
 Security

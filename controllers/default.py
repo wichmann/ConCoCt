@@ -202,7 +202,7 @@ def build_annotations_for_errors(report_data):
             # minus one because indexes for code editor begin with zero!
             line_with_error = str(int(message['line']) - 1)
         except (ValueError, TypeError):
-            line_with_error = ''
+            line_with_error = -1
         # add or replace line data in list
         if line_with_error in list_of_concerned_lines:
             old_line_data = list_of_concerned_lines[line_with_error]
