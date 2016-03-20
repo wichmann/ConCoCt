@@ -8,6 +8,7 @@
 '%d days ago': 'vor %d Tagen',
 '%d hours ago': 'vor %d Stunden',
 '%d minutes ago': 'vor %d Minuten',
+'%d months ago': 'vor %d Monaten',
 '%d seconds ago': 'vor %d Sekunden',
 '%s %%(shop)': '%s %%(shop)',
 '%s %%(shop[0])': '%s %%(shop[0])',

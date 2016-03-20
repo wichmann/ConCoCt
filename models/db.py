@@ -48,8 +48,14 @@ mail.settings.login = concoct_conf.take('smtp.login')
 
 ## configure auth policy
 auth.settings.registration_requires_verification = False
-auth.settings.registration_requires_approval = False
+auth.settings.registration_requires_approval = True
 auth.settings.reset_password_requires_verification = True
+
+## set captchas to be used for registration
+from gluon.tools import Recaptcha
+auth.settings.captcha = Recaptcha(request, concoct_conf.take('captchas.public', cast=str),
+                                  concoct_conf.take('captchas.private', cast=str))
+auth.settings.login_captcha = False
 
 ## after defining tables, uncomment below to enable auditing
 # auth.enable_record_versioning(db)
